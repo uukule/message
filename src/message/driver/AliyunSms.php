@@ -41,6 +41,7 @@ class AliyunSms extends MessageAbstract
     ];
 
     protected $fromuser = '';
+    protected $subject = '';
 
     /**
      * 短信列表
@@ -179,10 +180,11 @@ class AliyunSms extends MessageAbstract
 
     /**
      * 发送
-     * @return bool
+     * @return array
      */
-    public function send(): bool
+    public function send(): array
     {
+        $response = [];
         $model = new Model();
         $model->data([
             'g_msgid' => session_create_id(),
@@ -221,17 +223,17 @@ class AliyunSms extends MessageAbstract
                         $updateData['out_msgid'] = 'BizId:' . $re['BizId'];
                         $model->detailUpdate($sub['msgid'], $updateData);
                     } else {
-                        $updateData['status'] = 2;
+                        $updateData['status'] = 3;
                         $updateData['err_message'] = "Error:{$re['Code']} - {$re['Message']}";
                     }
                     $model->detailUpdate($sub['msgid'], $updateData);
                 } catch (\think\Exception $exception) {
                     $db_data = [
                         'err_message' => $exception->getMessage(),
-                        'status' => 9
+                        'status' => 2
                     ];
                     $model->detailUpdate($sub['msgid'], $db_data);
-                    return false;
+                    throw new MessageException($exception->getMessage());
                 }
             }
         } else {
@@ -267,7 +269,8 @@ class AliyunSms extends MessageAbstract
                 $i++;
             }
         }
-        return true;
+        $response['g_msgid'] = $model->g_msgid;
+        return $response;
     }
 
     /**
@@ -387,9 +390,6 @@ class AliyunSms extends MessageAbstract
         $response = $model->userMsgList($where, $page, $rows);
         foreach ($response as &$vo){
             try {
-//                if(empty($vo['content'])){
-//                    $vo['complete'] = $this->templates[$vo['template_id']];
-//                }
                 $vo['content'] = unserialize($vo['content']);
                 $vo['complete'] = $this->template_replace($vo['template_id'], $vo['content']);
             } catch (MessageException $exception) {

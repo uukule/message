@@ -51,9 +51,9 @@ abstract class MessageAbstract
 
     /**
      * 发送
-     * @return bool
+     * @return array
      */
-    abstract public function send(): bool;
+    abstract public function send(): array;
 
     /**
      * 队列发送

@@ -31,6 +31,7 @@ class Local extends MessageAbstract
 
 
     protected $fromuser = '';
+    protected $subject = '';
 
 
     public function __construct(array $config = [])
@@ -86,10 +87,11 @@ class Local extends MessageAbstract
 
     /**
      * 发送
-     * @return bool
+     * @return array
      */
-    public function send(): bool
+    public function send(): array
     {
+        $response = [];
         $model = new Model();
         $model->data([
             'g_msgid' => session_create_id(),
@@ -99,11 +101,12 @@ class Local extends MessageAbstract
             'touser' => $this->touser,
             'subject' => $this->subject,
             'push_time' => date('Y-m-d H:i:s', $this->push_time ?? time()),
-            'status' => 0,
+            'status' => 3,
         ]);
         $model->content = $this->content;
         $model->save();
-        return true;
+        $response['g_msgid'] = $model->g_msgid;
+        return $response;
     }
 
     /**

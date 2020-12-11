@@ -70,7 +70,7 @@ class WechatTemplate extends MessageAbstract
 
     public function __construct(array $config = [])
     {
-        $this->config = array_merge($this->config, $config, config('message.database'));
+        $config = array_merge($this->config, $config, config('message.database'));
         $this->config = $config;
         try {
             $this->app = Factory::officialAccount($config);
@@ -170,7 +170,7 @@ class WechatTemplate extends MessageAbstract
         try {
             $re = $this->app->template_message->send($param);
             if (0 === $re['errcode']) {
-                $updateData['status'] = 1;
+                $updateData['status'] = 3;
             } else {
                 $updateData['status'] = 2;
                 $updateData['err_message'] = "Error:{$re['errcode']} - {$re['errmsg']}";
@@ -186,10 +186,11 @@ class WechatTemplate extends MessageAbstract
 
     /**
      * 发送
-     * @return bool
+     * @return array
      */
-    public function send(): bool
+    public function send(): array
     {
+        $response = [];
         $model = new Model();
         $model->data([
             'g_msgid' => session_create_id(),
@@ -204,7 +205,8 @@ class WechatTemplate extends MessageAbstract
         ]);
         $model->content = $this->data['data'];
         $model->save();
-        if (!$this->config['is_queue']) {
+        if (!$this->config['is_queue'])
+        {
             try {
                 $tempData = $this->data;
                 foreach ($model->sub as $sub) {
@@ -221,17 +223,16 @@ class WechatTemplate extends MessageAbstract
                     $model->detailUpdate($sub['msgid'], $updateData);
                 }
 
-                return true;
             } catch (\think\Exception $exception) {
                 $db_data = [
                     'err_message' => $exception->getMessage(),
                     'status' => 2
                 ];
                 $model->save($db_data);
-                //Db::table('message')->where('message_id', $id)->update($db_data);
-                return false;
+                throw new MessageException($exception->getMessage());
             }
-        } else {
+        }
+        else {
             $queue = new Queue();
             $isFirstUser = true;
             $i = 1;
@@ -262,9 +263,9 @@ class WechatTemplate extends MessageAbstract
                 $isFirstUser = false;
                 $i++;
             }
-            return true;
         }
-        return true;
+        $response['g_msgid'] = $model->g_msgid;
+        return $response;
     }
 
     public function get_templates(bool $reload = false)

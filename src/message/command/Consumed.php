@@ -67,11 +67,11 @@ class Consumed extends Command
                     FormatOutput::blue('正在发送中.... 接收者: ' . $data->touser() . "\n");
                     FormatOutput::blue('pack: ' . json_encode($data->data(), 256) . "\n");
                     if ($data->isFirstUser()) {
-                        $model->where('msgid', $data->groupMsgid())->update(['status' => 4]);
+                        $model->where('g_msgid', $data->groupMsgid())->update(['status' => 1]);
                     }
                     $handle->queueSend($data->msgid(), $data->data());
                     if ($data->isLastUser()) {
-                        $model->where('msgid', $data->groupMsgid())->update(['status' => 1]);
+                        $model->where('g_msgid', $data->groupMsgid())->update(['status' => 4]);
                     }
                     FormatOutput::green('发送成功 发送时间: ' . date('Y-m-d H:i:s') . "\n");
 

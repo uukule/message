@@ -8,9 +8,9 @@ return [
     //启用定时任务时需要开启REDIS服务
     'redis' => [
         // 服务器地址
-        'host' => env('cache.host', '218.244.136.93'),
+        'host' => env('cache.host', ''),
         'port' => env('cache.port', 6379),
-        'password' => env('cache.password', 'FA8599F2A919DC9C')
+        'password' => env('cache.password', '')
     ],
     'local' => [
         'type' => 'local',
