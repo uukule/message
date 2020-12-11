@@ -19,10 +19,10 @@ return [
     'sms' => [
         'platfrom_id' => 2,
         'type' => 'aliyun_sms',
-        'accessKeyId' => 'LTAI4GH9jPbQPu7P6qmXG7b1',
-        'accessKeySecret' => 'orxIhorFopbXsWszNYpAIzQ3xoqZ54',
+        'accessKeyId' => '',
+        'accessKeySecret' => '',
         'regionId' => 'cn-hangzhou',//如：cn-hangzhou
-        'signName' => '中清北科',
+        'signName' => '',//短信签名
         'template_code' => 'SMS_203075423,SMS_203075422,SMS_203075421,SMS_203075420,SMS_203075419,SMS_203075418'
     ],
     'wechat' => [

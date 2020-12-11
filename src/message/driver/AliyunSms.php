@@ -6,6 +6,7 @@ namespace uukule\message\driver;
 
 use EasyWeChat\Kernel\Exceptions\InvalidArgumentException;
 use think\facade\Cache;
+use think\facade\Validate;
 use uukule\message\core\Data;
 use uukule\message\core\Model;
 use uukule\message\core\Queue;
@@ -113,19 +114,6 @@ class AliyunSms extends MessageAbstract
         return $templates;
     }
 
-    /**
-     * 接收者
-     * @param string|array $user_sign
-     * @return MessageAbstract
-     */
-    public function touser($user_sign): MessageAbstract
-    {
-        if (is_array($user_sign)) {
-            $user_sign = join(',', $user_sign);
-        }
-        $this->touser = $user_sign;
-        return $this;
-    }
 
     /**
      * 发送者
@@ -137,7 +125,29 @@ class AliyunSms extends MessageAbstract
         $this->fromuser = $user_sign;
         return $this;
     }
-
+    /**
+     * 接收者
+     * @param string|array $user_sign
+     * @return MessageAbstract
+     */
+    public function touser($tousers): MessageAbstract
+    {
+        if (is_string($tousers)) {
+            $users = explode(',', $tousers);
+            foreach ($users as $user)
+            {
+                list($touser, $name) = explode('|', $user);
+                $tousers[$touser] = $name;
+            }
+        }
+        foreach ($tousers as $mobile => $name){
+            if(!Validate::regex($mobile, 'mobile')){
+                throw new MessageException("不合法移动号码 [{$mobile}]");
+            }
+        }
+        $this->touser = $tousers;
+        return $this;
+    }
     /**
      * 消息主题
      * @param string $subject

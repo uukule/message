@@ -27,12 +27,6 @@ abstract class MessageAbstract
      */
     abstract public function queue(bool $is_queue): MessageAbstract;
 
-    /**
-     * 接收者
-     * @param string|array $user_sign
-     * @return MessageAbstract
-     */
-    abstract public function touser($user_sign): MessageAbstract;
 
     /**
      * 发送者
@@ -139,5 +133,25 @@ abstract class MessageAbstract
      * @return mixed
      */
     abstract public function callback(array $param);
+
+
+    /**
+     * 接收者
+     * @param string|array $user_sign
+     * @return MessageAbstract
+     */
+    public function touser($tousers): MessageAbstract
+    {
+        if (is_string($tousers)) {
+            $users = explode(',', $tousers);
+            foreach ($users as $user)
+            {
+                list($touser, $name) = explode('|', $user);
+                $tousers[$touser] = $name;
+            }
+        }
+        $this->touser = $tousers;
+        return $this;
+    }
 
 }

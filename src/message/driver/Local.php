@@ -50,19 +50,6 @@ class Local extends MessageAbstract
         return $this;
     }
 
-    /**
-     * 接收者
-     * @param string|array $user_sign
-     * @return MessageAbstract
-     */
-    public function touser($user_sign): MessageAbstract
-    {
-        if (is_array($user_sign)) {
-            $user_sign = join(',', $user_sign);
-        }
-        $this->touser = $user_sign;
-        return $this;
-    }
 
     /**
      * 发送者

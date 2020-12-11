@@ -32,12 +32,12 @@ class Model extends \think\Model
     {
         try {
             $db_data = $model->getData();
-            $tousers = explode(',', $db_data['touser']);
             $sub = [];
             $db_data['message_id'] = $db_data['id'];
             unset($db_data['id']);
-            foreach ($tousers as $touser) {
+            foreach ($db_data['touser'] as $touser=>$name) {
                 $db_data['touser'] = $touser;
+                $db_data['touser_name'] = $name;
                 $db_data['msgid'] = session_create_id();
                 $sub[] = $db_data;
                 Db::table('message_details')->strict(false)->insert($db_data);
