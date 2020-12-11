@@ -1,0 +1,31 @@
+<?php
+
+return [
+    'database' => [
+        'table' => 'message',
+        'is_queue' => true
+    ],
+    //启用定时任务时需要开启REDIS服务
+    'redis' => [
+        // 服务器地址
+        'host' => env('cache.host', '218.244.136.93'),
+        'port' => env('cache.port', 6379),
+        'password' => env('cache.password', 'FA8599F2A919DC9C')
+    ],
+    'local' => [
+        'type' => 'local',
+        'platfrom_id' => 3
+    ],
+    'sms' => [
+        'platfrom_id' => 2,
+        'type' => 'aliyun_sms',
+        'accessKeyId' => 'LTAI4GH9jPbQPu7P6qmXG7b1',
+        'accessKeySecret' => 'orxIhorFopbXsWszNYpAIzQ3xoqZ54',
+        'regionId' => 'cn-hangzhou',//如：cn-hangzhou
+        'signName' => '中清北科',
+        'template_code' => 'SMS_203075423,SMS_203075422,SMS_203075421,SMS_203075420,SMS_203075419,SMS_203075418'
+    ],
+    'wechat' => [
+
+    ]
+];
