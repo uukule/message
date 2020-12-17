@@ -10,6 +10,7 @@ use think\facade\Validate;
 use uukule\message\core\Data;
 use uukule\message\core\Model;
 use uukule\message\core\Queue;
+use uukule\message\core\Touser;
 use uukule\MessageAbstract;
 use AlibabaCloud\Client\AlibabaCloud;
 use AlibabaCloud\Client\Exception\ClientException;
@@ -101,6 +102,7 @@ class AliyunSms extends MessageAbstract
                 ->action('QuerySmsTemplate')
                 ->method('POST')
                 ->host('dysmsapi.aliyuncs.com')
+
                 ->options([
                     'query' => [
                         'RegionId' => $this->config['regionId'],
@@ -117,38 +119,21 @@ class AliyunSms extends MessageAbstract
 
 
     /**
-     * 发送者
-     * @param string $user_sign
-     * @return MessageAbstract
-     */
-    public function fromuser(string $user_sign): MessageAbstract
-    {
-        $this->fromuser = $user_sign;
-        return $this;
-    }
-    /**
      * 接收者
-     * @param string|array $user_sign
+     * @param Touser $tousers
      * @return MessageAbstract
      */
-    public function touser($tousers): MessageAbstract
+    public function touser(Touser $tousers): MessageAbstract
     {
-        if (is_string($tousers)) {
-            $users = explode(',', $tousers);
-            foreach ($users as $user)
-            {
-                list($touser, $name) = explode('|', $user);
-                $tousers[$touser] = $name;
-            }
-        }
-        foreach ($tousers as $mobile => $name){
-            if(!Validate::regex($mobile, 'mobile')){
-                throw new MessageException("不合法移动号码 [{$mobile}]");
-            }
-        }
+//        foreach ($tousers as list($mobile, $name)) {
+//            if (!Validate::regex($mobile, 'mobile')) {
+//                throw new MessageException("不合法移动号码 [{$mobile}]");
+//            }
+//        }
         $this->touser = $tousers;
         return $this;
     }
+
     /**
      * 消息主题
      * @param string $subject
@@ -190,7 +175,8 @@ class AliyunSms extends MessageAbstract
             'g_msgid' => session_create_id(),
             'appid' => $this->config['accessKeyId'],
             'platfrom_id' => 2,
-            'fromuser' => $this->fromuser,
+            'fromuser' => $this->from_user_sign,
+            'fromuser_name' => $this->from_user_name,
             'touser' => $this->touser,
             'subject' => $this->subject,
             'template_id' => $this->query['TemplateCode'],
@@ -204,6 +190,8 @@ class AliyunSms extends MessageAbstract
                 try {
                     $query = $this->query;
                     $query['PhoneNumbers'] = $sub['touser'];
+                    $query['CallbackUrl'] = 'https://api.dev.zqbeike.com/api/platform/aliyun/sms.json';
+                    $query['callback_url'] = 'https://api.dev.zqbeike.com/api/platform/aliyun/sms.json';
                     //$query['OutId'] = $sub['msgid'];
                     $re = AlibabaCloud::rpc()
                         ->product('Dysmsapi')
@@ -213,6 +201,7 @@ class AliyunSms extends MessageAbstract
                         ->action('SendSms')
                         ->options([
                             'query' => $query,
+                            'callback_url' => 'https://api.dev.zqbeike.com/api/platform/aliyun/sms.json'
                         ])->request();
 
                     //发送返回判断
@@ -337,9 +326,6 @@ class AliyunSms extends MessageAbstract
     }
 
 
-
-
-
     /**
      * 组消息列表
      * @param array $param 条件
@@ -379,7 +365,7 @@ class AliyunSms extends MessageAbstract
      * @param int $rows
      * @return array
      */
-    public function userMsgList($param, int $page=1, int $rows = 30): array
+    public function userMsgList($param, int $page = 1, int $rows = 30): array
     {
         $where = [
             'platfrom_id' => $this->config['platfrom_id']
@@ -388,7 +374,7 @@ class AliyunSms extends MessageAbstract
 
         $model = new Model();
         $response = $model->userMsgList($where, $page, $rows);
-        foreach ($response as &$vo){
+        foreach ($response as &$vo) {
             try {
                 $vo['content'] = unserialize($vo['content']);
                 $vo['complete'] = $this->template_replace($vo['template_id'], $vo['content']);
@@ -425,8 +411,7 @@ class AliyunSms extends MessageAbstract
     }
 
 
-
-    private function template_replace(string $template_id, array $data): string
+    public function template_replace(string $template_id, array $data): string
     {
         $templates = $this->get_templates();
         $template = $templates[$template_id] ?? null;

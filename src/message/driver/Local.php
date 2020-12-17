@@ -52,16 +52,6 @@ class Local extends MessageAbstract
     }
 
 
-    /**
-     * 发送者
-     * @param string $user_sign
-     * @return MessageAbstract
-     */
-    public function fromuser(string $user_sign): MessageAbstract
-    {
-        $this->fromuser = $user_sign;
-        return $this;
-    }
 
     /**
      * 消息主题
@@ -97,7 +87,8 @@ class Local extends MessageAbstract
             'g_msgid' => session_create_id(),
             'appid' => $this->config['group_name'],
             'platfrom_id' => $this->config['platfrom_id'],
-            'fromuser' => $this->fromuser,
+            'fromuser' => $this->from_user_sign,
+            'fromuser_name' => $this->from_user_name,
             'touser' => $this->touser,
             'subject' => $this->subject,
             'push_time' => date('Y-m-d H:i:s', $this->push_time ?? time()),

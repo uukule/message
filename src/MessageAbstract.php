@@ -3,7 +3,9 @@
 
 namespace uukule;
 
+use uukule\message\core\Model;
 use uukule\message\core\Queue;
+use uukule\message\core\Touser;
 
 /**
  * @method MessageAbstract url(string $url, string $appid) 设置跳转地址
@@ -17,6 +19,8 @@ abstract class MessageAbstract
 {
 
     protected $push_time = null;
+    protected $from_user_sign = null;
+    protected $from_user_name = null;
 
     abstract public function __construct(array $config);
 
@@ -29,11 +33,14 @@ abstract class MessageAbstract
 
 
     /**
-     * 发送者
      * @param string $user_sign
-     * @return MessageAbstract
+     * @param string $user_name
      */
-    abstract public function fromuser(string $user_sign): MessageAbstract;
+    public function fromuser(string $from_user_sign, string $from_user_name): MessageAbstract{
+        $this->from_user_sign = $from_user_sign;
+        $this->from_user_name = $from_user_name;
+        return $this;
+    }
 
     /**
      * 消息主题
@@ -98,24 +105,17 @@ abstract class MessageAbstract
 
     /**
      * 撤消消息
-     * @param string $msgid
+     * @param string $g_msgid 群消息ID
      * @return bool
      */
-    public function revoke(string $msgid): bool
+    public function revoke(string $g_msgid): bool
     {
         $queue = new Queue();
-        return $queue->revoke($msgid);
+        return $queue->revoke($g_msgid);
     }
 
 
-    /**
-     * 组消息列表
-     * @param array $param 条件
-     * @param int $page
-     * @param int $rows
-     * @return array
-     */
-    abstract public function groupMsgList($param, int $page, int $rows): array;
+
 
     /**
      * 用户消息列表
@@ -137,21 +137,49 @@ abstract class MessageAbstract
 
     /**
      * 接收者
-     * @param string|array $user_sign
+     * @param Touser $tousers
      * @return MessageAbstract
      */
-    public function touser($tousers): MessageAbstract
+    public function touser(Touser $tousers): MessageAbstract
     {
-        if (is_string($tousers)) {
-            $users = explode(',', $tousers);
-            foreach ($users as $user)
-            {
-                list($touser, $name) = explode('|', $user);
-                $tousers[$touser] = $name;
-            }
-        }
         $this->touser = $tousers;
         return $this;
     }
 
+
+    /**
+     * 组消息列表
+     * @param $param 条件
+     * @param int $page
+     * @param int $rows
+     * @return array
+     * @throws MessageException
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\DbException
+     * @throws \think\db\exception\ModelNotFoundException
+     */
+    public function groupMsgList($param = [], int $page = 1, int $rows = 20): array
+    {
+
+        $response = [];
+        $model = new Model();
+        $model = $model->order('create_time', 'desc')
+            ->page($page, $rows);
+        if (is_array($param)) {
+            $model = $model->where($param);
+        }
+        $rows = $model->select();
+        if (!is_null($rows)) {
+            $response = $rows->toArray();
+            foreach ($response as &$vo) {
+                try {
+                    $vo['complete'] = $this->template_replace($vo['template_id'], $vo['content']);
+                } catch (MessageException $exception) {
+                    $vo['complete'] = '';
+                }
+
+            }
+        }
+        return $response;
+    }
 }

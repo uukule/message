@@ -70,7 +70,7 @@ class WechatTemplate extends MessageAbstract
 
     public function __construct(array $config = [])
     {
-        $config = array_merge($this->config, $config, config('message.database'));
+        $config = array_merge($this->config, $config);
         $this->config = $config;
         try {
             $this->app = Factory::officialAccount($config);
@@ -121,16 +121,6 @@ class WechatTemplate extends MessageAbstract
     }
 
 
-    /**
-     * 发送者
-     * @param string $user_sign
-     * @return MessageAbstract
-     */
-    public function fromuser(string $user_sign): MessageAbstract
-    {
-        $this->fromuser = $user_sign;
-        return $this;
-    }
 
     /**
      * 发送内容
@@ -196,7 +186,8 @@ class WechatTemplate extends MessageAbstract
             'g_msgid' => session_create_id(),
             'appid' => $this->config['app_id'],
             'platfrom_id' => 1,
-            'fromuser' => $this->fromuser,
+            'fromuser' => $this->from_user_sign,
+            'fromuser_name' => $this->from_user_name,
             'touser' => $this->touser,
             'subject' => $this->subject,
             'template_id' => $this->data['template_id'],
@@ -305,7 +296,7 @@ class WechatTemplate extends MessageAbstract
         return $response;
     }
 
-    private function template_replace(string $template_id, array $data): string
+    public function template_replace(string $template_id, array $data): string
     {
         $templates = $this->get_templates();
         $template = $templates[$template_id] ?? null;
