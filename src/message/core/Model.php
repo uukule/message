@@ -88,7 +88,7 @@ class Model extends \think\Model
     public function userMsgList($param = [], $page = 1, $rows = 30)
     {
         $response = Db::view([$this->table . '_details' => 'details'], ['msgid', 'touser', 'touser_name', 'status', 'err_message', 'push_time', 'send_time', 'read_time', 'create_time'])
-            ->view([$this->table => 'main'], ['appid', 'fromuser', 'platfrom_id', 'template_id', 'subject', 'content'], 'details.message_id=main.message_id', 'LEFT')
+            ->view([$this->table => 'main'], ['appid', 'fromuser', 'platfrom_id', 'template_id', 'subject', 'content', 'g_msgid'], 'details.message_id=main.message_id', 'LEFT')
             ->order('details.create_time', 'DESC')
             ->where($param)
             //->fetchSql(true)
@@ -98,6 +98,9 @@ class Model extends \think\Model
             $response = [];
         } elseif (is_object($response)) {
             $response = $response->toArray();
+            foreach ($response['data'] as &$vo){
+                $vo['content'] = unserialize($vo['content']);
+            }
         }
         return $response;
     }

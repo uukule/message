@@ -33,6 +33,7 @@ abstract class MessageAbstract
 
 
     /**
+     * 发布者
      * @param string $user_sign
      * @param string $user_name
      */

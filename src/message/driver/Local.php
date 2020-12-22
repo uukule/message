@@ -127,7 +127,7 @@ class Local extends MessageAbstract
      */
     public function info(string $info): array
     {
-        // TODO: Implement info() method.
+
     }
 
     /**
@@ -178,14 +178,6 @@ class Local extends MessageAbstract
 
         $model = new Model();
         $response = $model->userMsgList($where, $page, $rows);
-        foreach ($response as &$vo){
-            try {
-                $vo['content'] = unserialize($vo['content']);
-                $vo['complete'] = $this->template_replace($vo['template_id'], $vo['content']);
-            } catch (MessageException $exception) {
-                $vo['complete'] = '';
-            }
-        }
         return $response;
     }
 

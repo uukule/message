@@ -20,7 +20,6 @@ class Touser implements ArrayAccess,IteratorAggregate
 
     public function offsetSet($offset, $value): void
     {
-        var_dump(1111111);
         if (is_null($offset)) {
             $this->users[] = $value;
         } else {
