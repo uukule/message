@@ -11,7 +11,7 @@ class Queue
     /**
      * @var Redis|null
      */
-    protected $handle = null;
+    protected static $handle = null;
 
     /**
      * @var null|int 定时
@@ -24,16 +24,25 @@ class Queue
         $redis = new \Redis();
         $redis->connect($config['host'], $config['port']);
         $redis->auth($config['password']);
-        $this->handle = $redis;
+        self::$handle = $redis;
+    }
+
+
+    /**
+     * @return Redis
+     */
+    public function redis() : \Redis
+    {
+        return self::$handle;
     }
 
     public function push(Data $data): void
     {
         if(is_null($this->timeout)){
-            $this->handle->lPush($this->queue_name, serialize($data));
+            self::$handle->lPush($this->queue_name, serialize($data));
         }else{
-            $this->handle->lPush("{$this->queue_name}:{$data->groupMsgid()}", serialize($data));
-            $this->handle->zAdd('message:timer', $this->timeout, $data->groupMsgid());
+            self::$handle->lPush("{$this->queue_name}:{$data->groupMsgid()}", serialize($data));
+            self::$handle->zAdd('message:timer', $this->timeout, $data->groupMsgid());
         }
 
     }
@@ -52,14 +61,14 @@ class Queue
     public function timer()
     {
         while (true) {
-            if ($msgids = $this->handle->zRangeByScore('message:timer', 0, time())) {
+            if ($msgids = self::$handle->zRangeByScore('message:timer', 0, time())) {
                 foreach ($msgids as $msgid) {
-                    while ($val = $this->handle->lPop("{$this->queue_name}:{$msgid}")) {
-                        $this->handle->lPush($this->queue_name, $val);
+                    while ($val = self::$handle->lPop("{$this->queue_name}:{$msgid}")) {
+                        self::$handle->lPush($this->queue_name, $val);
                     }
 
                     FormatOutput::red("\n".date('Y-m-d H:i:s')." - {$msgid}\n");
-                    $this->handle->zRem('message:timer', $msgid);
+                    self::$handle->zRem('message:timer', $msgid);
                 }
             } else {
                 sleep(5);
@@ -78,8 +87,8 @@ class Queue
      */
     public function revoke(string $msgid):bool
     {
-        $this->handle->del("{$this->queue_name}:{$msgid}");
-        $this->handle->zRem('message:timer', $msgid);
+        self::$handle->del("{$this->queue_name}:{$msgid}");
+        self::$handle->zRem('message:timer', $msgid);
         return true;
     }
 
@@ -88,7 +97,7 @@ class Queue
      */
     public function pop()
     {
-        $data = $this->handle->rPop($this->queue_name);
+        $data = self::$handle->rPop($this->queue_name);
         $data = unserialize($data);
         return $data;
     }

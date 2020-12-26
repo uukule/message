@@ -33,6 +33,7 @@ class WechatSubscribeMessage extends MessageAbstract
             'file' => '/wechat.log'
         ]
     ];
+    protected $is_set_access_token = false;
 
     protected $templates = [];
     /**
@@ -54,12 +55,6 @@ class WechatSubscribeMessage extends MessageAbstract
      */
     protected $fromuser = '';
 
-    /**
-     * 凭证
-     * @var string
-     */
-    protected $access_token = null;
-
     protected $subject = '';
 
     //public $return = ['err_code' => 1];
@@ -69,7 +64,7 @@ class WechatSubscribeMessage extends MessageAbstract
         $config = array_merge($this->config, $config);
         $this->config = $config;
         try {
-            $this->app = Factory::miniProgram($config)->subscribe_message;
+            $this->app = Factory::miniProgram($config);
         } catch (\think\Exception $e) {
             throw new Exception($e->getMessage(), $e->getCode());
         }
@@ -77,9 +72,32 @@ class WechatSubscribeMessage extends MessageAbstract
     }
 
 
-    public function access_token(string $access_token): MessageAbstract
+    /**
+     * 设置token
+     *
+     * @param string|null $access_token
+     * @return MessageAbstract
+     * @throws InvalidArgumentException
+     * @throws \EasyWeChat\Kernel\Exceptions\HttpException
+     * @throws \EasyWeChat\Kernel\Exceptions\InvalidConfigException
+     * @throws \EasyWeChat\Kernel\Exceptions\RuntimeException
+     * @throws \Psr\SimpleCache\InvalidArgumentException
+     */
+    public function access_token(string $access_token = null): MessageAbstract
     {
-        $this->app['access_token'] = $access_token;
+        if (is_null($access_token)) {
+            $access_token_key = "wechat:{$this->config['app_id']}:access_token";
+            $redis = (new Queue())->redis();
+            if (!$redis->exists($access_token_key)) {
+                $access_token = $this->app->access_token->getToken(true)['access_token']; // 强制重新从微信服务器获取 token.
+                $redis->set($access_token_key, $access_token);
+                $redis->expire($access_token_key, 7100);
+            }else{
+                $access_token = $redis->get($access_token_key);
+            }
+        }
+        $this->app['access_token']->setToken($access_token);
+        $this->is_set_access_token = true;
         return $this;
     }
 
@@ -117,7 +135,6 @@ class WechatSubscribeMessage extends MessageAbstract
     }
 
 
-
     /**
      * 发送内容
      * @param array|string $data
@@ -125,6 +142,9 @@ class WechatSubscribeMessage extends MessageAbstract
      */
     public function content($data): MessageAbstract
     {
+        foreach ($data as &$vo) {
+            $vo = ['value' => $vo];
+        }
         $this->data['data'] = $data;
         return $this;
     }
@@ -154,7 +174,7 @@ class WechatSubscribeMessage extends MessageAbstract
         $updateData = [];
         $updateData['send_time'] = date('Y-m-d H:i:s');
         try {
-            $re = $this->app->template_message->send($param);
+            $re = $this->app->subscribe_message->send($param);
             if (0 === $re['errcode']) {
                 $updateData['status'] = 3;
             } else {
@@ -176,6 +196,9 @@ class WechatSubscribeMessage extends MessageAbstract
      */
     public function send(): array
     {
+        if (!$this->is_set_access_token) {
+            $this->access_token();
+        }
         $response = [];
         $model = new Model();
         $model->data([
@@ -192,13 +215,12 @@ class WechatSubscribeMessage extends MessageAbstract
         ]);
         $model->content = $this->data['data'];
         $model->save();
-        if (!$this->config['is_queue'])
-        {
+        if (!$this->config['is_queue']) {
             try {
                 $tempData = $this->data;
                 foreach ($model->sub as $sub) {
                     $tempData['touser'] = $sub['touser'];
-                    $re = $this->app->template_message->send($tempData);
+                    $re = $this->app->subscribe_message->send($tempData);
                     $updateData = [];
                     $updateData['send_time'] = date('Y-m-d H:i:s');
                     if (0 === $re['errcode']) {
@@ -256,21 +278,8 @@ class WechatSubscribeMessage extends MessageAbstract
 
     public function get_templates(bool $reload = false)
     {
-        $templates = $this->app->getTemplates();
-//        $cache_key = "ServiceAccount:{$this->config['app_id']}:templates";
-//        $templates = Cache::get($cache_key);
-//        if (empty($templates) || $reload) {
-//            $templates = [];
-//            $rows = $this->app->template_message->getPrivateTemplates()['template_list'];
-//            foreach ($rows as $row) {
-//                $vo = $row;
-//                preg_match_all('/(\{\{)([a-z]+)(\.DATA\}\})/', $row['content'], $matchs);
-//                $vo['param'] = [$matchs[0], $matchs[2]];
-//                $templates[$vo['template_id']] = $vo;
-//            }
-//            Cache::set($cache_key, $templates, 0);
-//        }
-        return $this->templates = $templates;
+        $templates = $this->app->subscribe_message->getTemplates();
+        return $this->templates = $templates['data'];
     }
 
     /**

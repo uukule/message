@@ -58,12 +58,6 @@ class WechatTemplate extends MessageAbstract
      */
     protected $fromuser = '';
 
-    /**
-     * 凭证
-     * @var string
-     */
-    protected $access_token = null;
-
     protected $subject = '';
 
     //public $return = ['err_code' => 1];
@@ -81,9 +75,32 @@ class WechatTemplate extends MessageAbstract
     }
 
 
-    public function access_token(string $access_token): MessageAbstract
+    /**
+     * 设置token
+     *
+     * @param string|null $access_token
+     * @return MessageAbstract
+     * @throws InvalidArgumentException
+     * @throws \EasyWeChat\Kernel\Exceptions\HttpException
+     * @throws \EasyWeChat\Kernel\Exceptions\InvalidConfigException
+     * @throws \EasyWeChat\Kernel\Exceptions\RuntimeException
+     * @throws \Psr\SimpleCache\InvalidArgumentException
+     */
+    public function access_token(string $access_token = null): MessageAbstract
     {
-        $this->app['access_token'] = $access_token;
+        if (is_null($access_token)) {
+            $access_token_key = "wechat:{$this->config['app_id']}:access_token";
+            $redis = (new Queue())->redis();
+            if (!$redis->exists($access_token_key)) {
+                $access_token = $this->app->access_token->getToken(true)['access_token']; // 强制重新从微信服务器获取 token.
+                $redis->set($access_token_key, $access_token);
+                $redis->expire($access_token_key, 7100);
+            }else{
+                $access_token = $redis->get($access_token_key);
+            }
+        }
+        $this->app['access_token']->setToken($access_token);
+        $this->is_set_access_token = true;
         return $this;
     }
 
@@ -261,18 +278,21 @@ class WechatTemplate extends MessageAbstract
 
     public function get_templates(bool $reload = false)
     {
-        $cache_key = "ServiceAccount:{$this->config['app_id']}:templates";
-        $templates = Cache::get($cache_key);
-        if (empty($templates) || $reload) {
+        $cache_key = "wechat:{$this->config['app_id']}:templates";
+        $redis = (new Queue())->redis($cache_key);
+        $is_exists = $redis->exists();
+        if (!$is_exists || $reload) {
             $templates = [];
             $rows = $this->app->template_message->getPrivateTemplates()['template_list'];
             foreach ($rows as $row) {
                 $vo = $row;
-                preg_match_all('/(\{\{)([a-z]+)(\.DATA\}\})/', $row['content'], $matchs);
+                preg_match_all('/(\{\{)([a-z0-9]+)(\.DATA\}\})/', $row['content'], $matchs);
                 $vo['param'] = [$matchs[0], $matchs[2]];
                 $templates[$vo['template_id']] = $vo;
             }
-            Cache::set($cache_key, $templates, 0);
+            $redis->set($cache_key, json_encode($templates, 256));
+        }else{
+            $templates = json_decode($redis->get($cache_key), true);
         }
         return $this->templates = $templates;
     }
