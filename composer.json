@@ -9,11 +9,11 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "php": ">=7.2.0",
+        "php": ">=7.4.0",
         "topthink/framework": "^6.0",
         "topthink/think-orm": "^2.0",
         "alibabacloud/client": "^1.5",
-        "w7corp/easywechat": "5.0.0"
+        "w7corp/easywechat": "^5.2"
     },
     "autoload": {
         "psr-4": {
