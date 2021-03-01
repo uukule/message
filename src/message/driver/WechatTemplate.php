@@ -24,7 +24,7 @@ class WechatTemplate extends MessageAbstract
         'platfrom_id' => 1,
         'app_id' => '',
         'secret' => '',
-        'token' => '',//如：oss-cn-hangzhou.aliyuncs.com
+        'token' => '',
         'encoding_aes_key' => '',//
         'auto_access_token' => false, //是否自动获取并缓存access_token
         'is_queue' => true,
@@ -44,12 +44,6 @@ class WechatTemplate extends MessageAbstract
     protected $data = [
         'touser' => null,//接收者 user-openid
         'template_id' => null, //模板ID template-id
-        //'url' => '', 跳转地址 URL
-//        'miniprogram' => [ 小程序跳转
-//            'appid' => '',
-//            'pagepath' => '',
-//        ],
-        //参数  ['key1' => 'VALUE','key2' => 'VALUE']
         'data' => null,
     ];
     /**
@@ -95,7 +89,7 @@ class WechatTemplate extends MessageAbstract
                 $access_token = $this->app->access_token->getToken(true)['access_token']; // 强制重新从微信服务器获取 token.
                 $redis->set($access_token_key, $access_token);
                 $redis->expire($access_token_key, 7100);
-            }else{
+            } else {
                 $access_token = $redis->get($access_token_key);
             }
         }
@@ -136,7 +130,6 @@ class WechatTemplate extends MessageAbstract
         }
         return $this;
     }
-
 
 
     /**
@@ -213,8 +206,7 @@ class WechatTemplate extends MessageAbstract
         ]);
         $model->content = $this->data['data'];
         $model->save();
-        if (!$this->config['is_queue'])
-        {
+        if (!$this->config['is_queue']) {
             try {
                 $tempData = $this->data;
                 foreach ($model->sub as $sub) {
@@ -239,8 +231,7 @@ class WechatTemplate extends MessageAbstract
                 $model->save($db_data);
                 throw new MessageException($exception->getMessage());
             }
-        }
-        else {
+        } else {
             $queue = new Queue();
             $isFirstUser = true;
             $i = 1;
@@ -276,7 +267,15 @@ class WechatTemplate extends MessageAbstract
         return $response;
     }
 
-    public function get_templates(bool $reload = false)
+
+    /**
+     * 获取所有模板列表
+     * @param bool $reload
+     * @return array|mixed|MessageAbstract
+     * @throws \EasyWeChat\Kernel\Exceptions\InvalidConfigException
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
+    public function getTemplates(bool $reload = false): array
     {
         $cache_key = "wechat:{$this->config['app_id']}:templates";
         $redis = (new Queue())->redis($cache_key);
@@ -291,10 +290,48 @@ class WechatTemplate extends MessageAbstract
                 $templates[$vo['template_id']] = $vo;
             }
             $redis->set($cache_key, json_encode($templates, 256));
-        }else{
+        } else {
             $templates = json_decode($redis->get($cache_key), true);
         }
         return $this->templates = $templates;
+    }
+
+    /**
+     * 添加模板
+     * 在公众号后台获取 $shortId 并添加到账户。
+     * @param string $shortId
+     * @return string $template_id
+     * @throws MessageException
+     * @throws \EasyWeChat\Kernel\Exceptions\InvalidConfigException
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
+    public function addTemplates(string $shortId): string
+    {
+        $template_id = null;
+        $result = $this->app->template_message->addTemplate($shortId);
+        if (0 !== $result['errcode']) {
+            throw new MessageException($result['errmsg']);
+        }
+        $template_id = $result['template_id'];
+        return $template_id;
+    }
+
+
+    /**
+     * 删除模板
+     * @param string $template_id
+     * @return bool
+     * @throws MessageException
+     * @throws \EasyWeChat\Kernel\Exceptions\InvalidConfigException
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
+    public function deleteTemplates(string $template_id): bool
+    {
+        $result = $this->app->template_message->deletePrivateTemplate($template_id);
+        if (0 !== $result['errcode']) {
+            throw new MessageException($result['errmsg']);
+        }
+        return true;
     }
 
     /**
@@ -318,7 +355,7 @@ class WechatTemplate extends MessageAbstract
 
     public function template_replace(string $template_id, array $data): string
     {
-        $templates = $this->get_templates();
+        $templates = $this->getTemplates();
         $template = $templates[$template_id] ?? null;
         if (empty($template)) {
             throw new MessageException('模板不存在或已删除！');

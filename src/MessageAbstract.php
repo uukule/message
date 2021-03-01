@@ -11,7 +11,9 @@ use uukule\message\core\Touser;
  * @method MessageAbstract url(string $url, string $appid) 设置跳转地址
  * @method MessageAbstract access_token(string $access_token)
  * @method MessageAbstract template_id(string $id)
- * @method MessageAbstract get_templates() 获取全部模板
+ * @method array getTemplates() 获取全部模板
+ * @method string addTemplates() 添加模板
+ * @method bool deleteTemplates() 删除模板
  * Interface MessageAbstract
  * @package uukule
  */
@@ -37,7 +39,8 @@ abstract class MessageAbstract
      * @param string $user_sign
      * @param string $user_name
      */
-    public function fromuser(string $from_user_sign, string $from_user_name): MessageAbstract{
+    public function fromuser(string $from_user_sign, string $from_user_name): MessageAbstract
+    {
         $this->from_user_sign = $from_user_sign;
         $this->from_user_name = $from_user_name;
         return $this;
@@ -84,6 +87,7 @@ abstract class MessageAbstract
      */
     abstract public function info(string $info): array;
 
+
     /**
      * 设置发送时间
      * @param $time
@@ -114,8 +118,6 @@ abstract class MessageAbstract
         $queue = new Queue();
         return $queue->revoke($g_msgid);
     }
-
-
 
 
     /**
@@ -183,4 +185,5 @@ abstract class MessageAbstract
         }
         return $response;
     }
+
 }

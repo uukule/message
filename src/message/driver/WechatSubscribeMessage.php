@@ -276,7 +276,7 @@ class WechatSubscribeMessage extends MessageAbstract
         return $response;
     }
 
-    public function get_templates(bool $reload = false)
+    public function getTemplates(bool $reload = false)
     {
         $templates = $this->app->subscribe_message->getTemplates();
         return $this->templates = $templates['data'];
@@ -303,7 +303,7 @@ class WechatSubscribeMessage extends MessageAbstract
 
     public function template_replace(string $template_id, array $data): string
     {
-        $templates = $this->get_templates();
+        $templates = $this->getTemplates();
         $template = $templates[$template_id] ?? null;
         if (empty($template)) {
             throw new MessageException('模板不存在或已删除！');
