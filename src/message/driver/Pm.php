@@ -19,7 +19,7 @@ use uukule\MessageException;
  * @method MessageAbstract url(string $url, string $appid)
  * @method MessageAbstract access_token(string $access_token)
  */
-class Local extends MessageAbstract
+class Pm extends MessageAbstract
 {
     protected $config = [
         'platform_id' => 3,//平台ID
@@ -92,7 +92,7 @@ class Local extends MessageAbstract
             'touser' => $this->touser,
             'subject' => $this->subject,
             'push_time' => date('Y-m-d H:i:s', $this->push_time ?? time()),
-            'status' => 3,
+            'status' => MESSAGE_STATUS_COMPLETE,
         ]);
         $model->content = $this->content;
         $model->save();

@@ -19,7 +19,9 @@
         "psr-4": {
             "uukule\\": "src/"
         },
-        "files": []
+        "files": [
+            "src/helpers.php"
+        ]
     }
 }
  

@@ -146,11 +146,11 @@ class WechatTemplate extends MessageAbstract
     public function check(): bool
     {
         if (is_null($this->data['touser']))
-            throw new MessageException('touser cannot be null', '10010');
+            throw new MessageException('touser cannot be null', MESSAGE_TOUSER_NO_EXISTENT);
         if (is_null($this->data['template_id']))
-            throw new MessageException('template_id cannot be null', '10011');
+            throw new MessageException('template_id cannot be null', MESSAGE_TEMPLATE_NO_EXISTENT);
         if (is_null($this->data['data']))
-            throw new MessageException('template_id cannot be null', '10011');
+            throw new MessageException('template_id cannot be null', MESSAGE_TEMPLATE_NO_EXISTENT);
         return true;
     }
 
@@ -170,13 +170,13 @@ class WechatTemplate extends MessageAbstract
         try {
             $re = $this->app->template_message->send($param);
             if (0 === $re['errcode']) {
-                $updateData['status'] = 3;
+                $updateData['status'] = MESSAGE_STATUS_SUCCESS;
             } else {
-                $updateData['status'] = 2;
+                $updateData['status'] = MESSAGE_STATUS_FAIL;
                 $updateData['err_message'] = "Error:{$re['errcode']} - {$re['errmsg']}";
             }
         } catch (InvalidArgumentException $exception) {
-            $updateData['status'] = 2;
+            $updateData['status'] = MESSAGE_STATUS_FAIL;
             $updateData['err_message'] = "Error:{$exception->getCode()} - {$exception->getMessage()}";
         }
         $model = new Model;
@@ -202,11 +202,12 @@ class WechatTemplate extends MessageAbstract
             'subject' => $this->subject,
             'template_id' => $this->data['template_id'],
             'push_time' => date('Y-m-d H:i:s', $this->push_time ?? time()),
-            'status' => 0,
+            'status' => MESSAGE_STATUS_WAIT,
         ]);
         $model->content = $this->data['data'];
         $model->save();
         if (!$this->config['is_queue']) {
+            $model->save(['status' => MESSAGE_STATUS_SENTING]);
             try {
                 $tempData = $this->data;
                 foreach ($model->sub as $sub) {
@@ -215,18 +216,19 @@ class WechatTemplate extends MessageAbstract
                     $updateData = [];
                     $updateData['send_time'] = date('Y-m-d H:i:s');
                     if (0 === $re['errcode']) {
-                        $updateData['status'] = 1;
+                        $updateData['status'] = MESSAGE_STATUS_SUCCESS;
                     } else {
-                        $updateData['status'] = 2;
+                        $updateData['status'] = MESSAGE_STATUS_FAIL;
                         $updateData['err_message'] = "Error:{$re['errcode']} - {$re['errmsg']}";
                     }
                     $model->detailUpdate($sub['msgid'], $updateData);
                 }
-
+                //发送结束
+                $model->save(['status' => MESSAGE_STATUS_COMPLETE]);
             } catch (\think\Exception $exception) {
                 $db_data = [
                     'err_message' => $exception->getMessage(),
-                    'status' => 2
+                    'status' => MESSAGE_STATUS_FAIL
                 ];
                 $model->save($db_data);
                 throw new MessageException($exception->getMessage());
@@ -280,10 +282,11 @@ class WechatTemplate extends MessageAbstract
         $cache_key = "wechat:{$this->config['app_id']}:templates";
         $redis = (new Queue())->redis($cache_key);
         $is_exists = $redis->exists();
+        $reload = true;
         if (!$is_exists || $reload) {
             $templates = [];
-            $rows = $this->app->template_message->getPrivateTemplates()['template_list'];
-            foreach ($rows as $row) {
+            $sourceTemplatesData = $this->app->template_message->getPrivateTemplates();
+            foreach ($sourceTemplatesData['template_list'] as $row) {
                 $vo = $row;
                 preg_match_all('/(\{\{)([a-z0-9]+)(\.DATA\}\})/', $row['content'], $matchs);
                 $vo['param'] = [$matchs[0], $matchs[2]];

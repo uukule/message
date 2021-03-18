@@ -41,14 +41,15 @@ class Model extends \think\Model
             $sub = [];
             $db_data['message_id'] = $db_data['id'];
             unset($db_data['id']);
+            $batchData = [];
             foreach ($db_data['touser'] as $touser) {
                 $db_data['touser'] = $touser[0];
                 $db_data['touser_name'] = $touser[1];
                 $db_data['msgid'] = session_create_id();
-                $sub[] = $db_data;
-                Db::table('message_details')->strict(false)->insert($db_data);
+                $batchData[] = $db_data;
             }
-            $model->sub = $sub;
+            Db::table('message_details')->strict(false)->limit(200)->insertAll($batchData);
+            $model->sub = $batchData;
 
             $model->commit();
         } catch (DbException $exception) {
@@ -73,6 +74,12 @@ class Model extends \think\Model
             $db = $db->where($param);
         }
         return $db->strict(false)->update($data);
+    }
+
+    public function groupMsg(string $g_msgid)
+    {
+        $message_id = $this->where('g_msgid', $g_msgid)->value('message_id');
+        return Db::table($this->table . '_details')->where('message_id', $message_id);
     }
 
     /**
