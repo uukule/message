@@ -286,6 +286,9 @@ class WechatTemplate extends MessageAbstract
         if (!$is_exists || $reload) {
             $templates = [];
             $sourceTemplatesData = $this->app->template_message->getPrivateTemplates();
+            if(!empty($sourceTemplatesData['errcode'])){
+                throw new MessageException($sourceTemplatesData['errmsg'], $sourceTemplatesData['errcode']);
+            }
             foreach ($sourceTemplatesData['template_list'] as $row) {
                 $vo = $row;
                 preg_match_all('/(\{\{)([a-z0-9]+)(\.DATA\}\})/', $row['content'], $matchs);
