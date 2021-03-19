@@ -94,17 +94,34 @@ class Model extends \think\Model
      */
     public function userMsgList($param = [], $page = 1, $rows = 30)
     {
-        $response = Db::view([$this->table . '_details' => 'details'], ['msgid', 'touser', 'touser_name', 'status', 'err_message', 'push_time', 'send_time', 'read_time', 'create_time'])
-            ->view([$this->table => 'main'], ['appid', 'fromuser', 'platfrom_id', 'template_id', 'subject', 'content', 'g_msgid'], 'details.message_id=main.message_id', 'LEFT')
-            ->order('details.create_time', 'DESC')
-            ->where($param)
-            //->fetchSql(true)
-            ->page($page, $rows)
-            ->paginate();
+        $db = Db::table('view_message')
+                ->field(['msgid', 'touser', 'touser_name', 'status', 'err_message', 'push_time', 'send_time', 'read_time', 'create_time', 'appid', 'fromuser', 'platfrom_id', 'template_id', 'subject', 'content', 'g_msgid'])
+            ->order('create_time', 'DESC')
+            ->where($param);
+        $response = $db->page($page, $rows)->paginate();
         if (is_null($response)) {
             $response = [];
         } elseif (is_object($response)) {
             $response = $response->toArray();
+            //状态统计
+            $statusCountRows = $db->field(['status','count(`status`)'=> 'status_num', 'ISNULL(read_time)' => 'is_no_read'])->group('status,ISNULL(read_time)')->select();
+            $response['together'] = [
+                'status' => [
+                    MESSAGE_STATUS_WAIT => 0,
+                    MESSAGE_STATUS_SENTING => 0,
+                    MESSAGE_STATUS_FAIL => 0,
+                    MESSAGE_STATUS_SUCCESS => 0,
+                    MESSAGE_STATUS_COMPLETE => 0,
+                ],
+                'is_read' => 0
+            ];
+            foreach ($statusCountRows as $statusRow){
+                $response['together']['status'][$statusRow['status']] += $statusRow['status_num'];
+                if(0 == $statusRow['is_no_read']){
+                    $response['together']['is_read'] += $statusRow['status_num'];
+                }
+
+            }
             foreach ($response['data'] as &$vo){
                 $vo['content'] = unserialize($vo['content']);
             }
