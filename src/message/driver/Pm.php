@@ -82,6 +82,8 @@ class Pm extends MessageAbstract
     public function send(): array
     {
         $response = [];
+
+        $is_timeout = empty($this->push_time) ? false : strtotime($this->push_time) > (time()+60);
         $model = new Model();
         $model->data([
             'g_msgid' => session_create_id(),
@@ -92,11 +94,28 @@ class Pm extends MessageAbstract
             'touser' => $this->touser,
             'subject' => $this->subject,
             'push_time' => date('Y-m-d H:i:s', $this->push_time ?? time()),
-            'status' => MESSAGE_STATUS_COMPLETE,
+            'status' => $is_timeout ? MESSAGE_STATUS_WAIT : MESSAGE_STATUS_COMPLETE,
         ]);
         $model->content = $this->content;
         $model->save();
         $response['g_msgid'] = $model->g_msgid;
+        if($is_timeout){
+            $queue = new Queue();
+            $pack = new Data();
+            $pack->driver(self::class);
+            $pack->config([
+                'type' => 'pm',
+            ]);
+            $pack->time(time());
+            $pack->groupMsgid($model->g_msgid);
+            $pack->isFirstUser(true);
+            $pack->isLastUser(true);
+            $pack->touser('');
+            $pack->data([]);
+            $pack->msgid($model->g_msgid);
+            $queue->timeout($this->push_time);
+            $queue->push($pack);
+        }
         return $response;
     }
 
@@ -107,6 +126,10 @@ class Pm extends MessageAbstract
      */
     public function queueSend(string $msgid, array $query): bool
     {
+        $model = new Model();
+        $gmsgRow = $model->where('g_msgid', $msgid)->find();
+        $gmsgRow->save(['status' => MESSAGE_STATUS_COMPLETE]);
+        $gmsgRow->groupMsg()->save(['status' => MESSAGE_STATUS_SUCCESS]);
         return true;
     }
 
