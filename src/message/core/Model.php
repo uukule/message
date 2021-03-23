@@ -116,6 +116,7 @@ class Model extends \think\Model
                     MESSAGE_STATUS_FAIL => 0,
                     MESSAGE_STATUS_SUCCESS => 0,
                     MESSAGE_STATUS_COMPLETE => 0,
+                    MESSAGE_STATUS_RESET => 0,
                 ],
                 'is_read' => 0
             ];
