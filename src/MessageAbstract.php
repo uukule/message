@@ -115,8 +115,18 @@ abstract class MessageAbstract
      */
     public function revoke(string $g_msgid): bool
     {
-        $queue = new Queue();
-        return $queue->revoke($g_msgid);
+        $model = new Model();
+        $model->startTrans();
+        try{
+            $gmsgRow = $model->where('g_msgid', $g_msgid)->find();
+            $gmsgRow->save(['status' => MESSAGE_STATUS_RESET]);
+            $gmsgRow->groupMsg()->save(['status' => MESSAGE_STATUS_RESET]);
+            $model->commit();
+            $queue = new Queue();
+            return $queue->revoke($g_msgid);
+        }catch (MessageException $exception){
+            $model->rollback();
+        }
     }
 
 

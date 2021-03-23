@@ -76,9 +76,13 @@ class Model extends \think\Model
         return $db->strict(false)->update($data);
     }
 
-    public function groupMsg(string $g_msgid)
+    public function groupMsg(string $g_msgid = null)
     {
-        $message_id = $this->where('g_msgid', $g_msgid)->value('message_id');
+        if(!is_null($g_msgid)){
+            $message_id = $this->where('g_msgid', $g_msgid)->value('message_id');
+        }else{
+            $message_id = $this->message_id;
+        }
         return Db::table($this->table . '_details')->where('message_id', $message_id);
     }
 
