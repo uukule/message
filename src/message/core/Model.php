@@ -118,12 +118,15 @@ class Model extends \think\Model
                     MESSAGE_STATUS_COMPLETE => 0,
                     MESSAGE_STATUS_RESET => 0,
                 ],
-                'is_read' => 0
+                'is_read' => 0,
+                'is_no_read' => 0
             ];
             foreach ($statusCountRows as $statusRow){
                 $response['together']['status'][$statusRow['status']] += $statusRow['status_num'];
                 if(0 == $statusRow['is_no_read']){
                     $response['together']['is_read'] += $statusRow['status_num'];
+                }else{
+                    $response['together']['is_no_read'] += $statusRow['status_num'];
                 }
 
             }
