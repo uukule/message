@@ -102,7 +102,11 @@ class Model extends \think\Model
                 ->field(['msgid', 'touser', 'touser_name', 'status', 'err_message', 'push_time', 'send_time', 'read_time', 'create_time', 'appid', 'fromuser', 'platfrom_id', 'template_id', 'subject', 'content', 'g_msgid'])
             ->order('create_time', 'DESC')
             ->where($param);
-        $response = $db->page($page, $rows)->paginate();
+        $pageParam = [
+            'page' => (int) $page,
+            'list_rows' => (int) $rows
+        ];
+        $response = $db->paginate($pageParam);
         if (is_null($response)) {
             $response = [];
         } elseif (is_object($response)) {
