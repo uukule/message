@@ -13,6 +13,11 @@ class Model extends \think\Model
 {
     //protected $pk = 'msgid';
     //protected $config = [];
+
+    protected $globalScope = ['sign'];
+
+    protected $sign_id = 0;
+
     protected $type = [
         'content' => 'serialize'
     ];
@@ -22,15 +27,21 @@ class Model extends \think\Model
      */
     protected static $drivers = null;
 
+
     public function __construct(array $data = [])
     {
         $config = config('message.database');
         $this->table = $config['table'];
+        $this->sign_id = $config['sign_id'];
         parent::__construct($data);
     }
 
     public static function onBeforeInsert($model)
     {
+        $config = config('message.database');
+        $data = $model->getData();
+        $data['sign_id'] = $config['sign_id'];
+        $model->data($data);
         $model->startTrans();
     }
 
@@ -58,6 +69,9 @@ class Model extends \think\Model
         }
     }
 
+    public function scopeSign($query){
+        $query->where('sign_id', $this->sign_id);
+    }
     /**
      * 更新单条信息记录
      * @param string|array $msgid |$where
@@ -78,9 +92,9 @@ class Model extends \think\Model
 
     public function groupMsg(string $g_msgid = null)
     {
-        if(!is_null($g_msgid)){
+        if (!is_null($g_msgid)) {
             $message_id = $this->where('g_msgid', $g_msgid)->value('message_id');
-        }else{
+        } else {
             $message_id = $this->message_id;
         }
         return Db::table($this->table . '_details')->where('message_id', $message_id);
@@ -99,12 +113,13 @@ class Model extends \think\Model
     public function userMsgList($param = [], $page = 1, $rows = 30)
     {
         $db = Db::table('view_message')
-                ->field(['msgid', 'touser', 'touser_name', 'status', 'err_message', 'push_time', 'send_time', 'read_time', 'create_time', 'appid', 'fromuser', 'platfrom_id', 'template_id', 'subject', 'content', 'g_msgid'])
+            ->field(['msgid', 'sign_id', 'touser', 'touser_name', 'status', 'err_message', 'push_time', 'send_time', 'read_time', 'create_time', 'appid', 'fromuser', 'platfrom_id', 'template_id', 'subject', 'content', 'g_msgid'])
+            ->where('sign_id', $this->sign_id)
             ->order('create_time', 'DESC')
             ->where($param);
         $pageParam = [
-            'page' => (int) $page,
-            'list_rows' => (int) $rows
+            'page' => (int)$page,
+            'list_rows' => (int)$rows
         ];
         $response = $db->paginate($pageParam);
         if (is_null($response)) {
@@ -112,7 +127,7 @@ class Model extends \think\Model
         } elseif (is_object($response)) {
             $response = $response->toArray();
             //状态统计
-            $statusCountRows = $db->field(['status','count(`status`)'=> 'status_num', 'ISNULL(read_time)' => 'is_no_read'])->group('status,ISNULL(read_time)')->select();
+            $statusCountRows = $db->field(['status', 'count(`status`)' => 'status_num', 'ISNULL(read_time)' => 'is_no_read'])->group('status,ISNULL(read_time)')->select();
             $response['together'] = [
                 'status' => [
                     MESSAGE_STATUS_WAIT => 0,
@@ -125,16 +140,16 @@ class Model extends \think\Model
                 'is_read' => 0,
                 'is_no_read' => 0
             ];
-            foreach ($statusCountRows as $statusRow){
+            foreach ($statusCountRows as $statusRow) {
                 $response['together']['status'][$statusRow['status']] += $statusRow['status_num'];
-                if(0 == $statusRow['is_no_read']){
+                if (0 == $statusRow['is_no_read']) {
                     $response['together']['is_read'] += $statusRow['status_num'];
-                }else{
+                } else {
                     $response['together']['is_no_read'] += $statusRow['status_num'];
                 }
 
             }
-            foreach ($response['data'] as &$vo){
+            foreach ($response['data'] as &$vo) {
                 $vo['content'] = unserialize($vo['content']);
             }
         }
@@ -155,22 +170,23 @@ class Model extends \think\Model
             }
             self::$drivers = $drivers;
         }
-        try{
+        try {
             $derver = self::$drivers[$data['platfrom_id']];
-            if(!empty($data['template_id'])){
-                $response = Message::init($derver)->template_replace($data['template_id'],$this->content);
+            if (!empty($data['template_id'])) {
+                $response = Message::init($derver)->template_replace($data['template_id'], $this->content);
 
-            }else{
+            } else {
                 $response = $this->content;
             }
-        }catch (\Exception $exception){
+        } catch (\Exception $exception) {
             $response = $exception->getMessage();
         }
         return $response;
 
     }
 
-    public function getPlatfromDescriptionAttr($value, $data){
+    public function getPlatfromDescriptionAttr($value, $data)
+    {
         $response = '';
         if (is_null(self::$drivers)) {
             $config = config('message');
@@ -183,10 +199,10 @@ class Model extends \think\Model
             }
             self::$drivers = $drivers;
         }
-        try{
+        try {
             $derver = self::$drivers[$data['platfrom_id']];
             return $derver['description'];
-        }catch (\Exception $exception){
+        } catch (\Exception $exception) {
             return $exception->getMessage();
         }
     }

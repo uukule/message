@@ -82,12 +82,14 @@ class Pm extends MessageAbstract
     public function send(): array
     {
         $response = [];
-
-        $is_timeout = empty($this->push_time) ? false : strtotime($this->push_time) > (time()+60);
+        $is_timeout = false;
+        if(!is_null($this->push_time)){
+            $is_timeout = $this->push_time > (time()+60);
+        }
         $model = new Model();
         $model->data([
             'g_msgid' => session_create_id(),
-            'appid' => $this->config['group_name'],
+            'appid' => '',
             'platfrom_id' => $this->config['platfrom_id'],
             'fromuser' => $this->from_user_sign,
             'fromuser_name' => $this->from_user_name,

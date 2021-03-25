@@ -48,7 +48,7 @@ class Message
     public static function init($config = null)
     {
         if (is_null($config)) {
-            $config = config('message.local');
+            $config = config('message.pm');
             return self::connect($config);
         }elseif (is_string($config)) {
             return self::connect(config('message.' . $config));
