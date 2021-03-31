@@ -6,6 +6,7 @@ namespace uukule\message\command;
 use think\console\Command;
 use think\console\Input;
 use think\console\Output;
+use think\facade\Db;
 use uukule\facade\Message;
 use uukule\message\core\FormatOutput;
 use uukule\message\core\Queue;
@@ -53,6 +54,10 @@ class Consumed extends Command
                     }
                     continue;
                 }
+                if ($data->isFirstUser()) {
+                    FormatOutput::yellow("\n========================消息组({$data->groupMsgid()}) 开始发送===================================================\n");
+                    Db::table('message')->where('g_msgid', $data->groupMsgid())->update(['status' => MESSAGE_STATUS_SENTING]);
+                }
                 echo "\n----------------------------------------------------------------------------------------------\n";
                 try {
                     $driver_name = md5(serialize($data->config()));
@@ -66,13 +71,7 @@ class Consumed extends Command
                     FormatOutput::blue('提交时间: ' . date('Y-m-d H:i:s', $data->time()) . "\n");
                     FormatOutput::blue('正在发送中.... 接收者: ' . $data->touser() . "\n");
                     FormatOutput::blue('pack: ' . json_encode($data->data(), 256) . "\n");
-                    if ($data->isFirstUser()) {
-                        $model->where('g_msgid', $data->groupMsgid())->update(['status' => MESSAGE_STATUS_SENTING]);
-                    }
                     $handle->queueSend($data->msgid(), $data->data());
-                    if ($data->isLastUser()) {
-                        $model->where('g_msgid', $data->groupMsgid())->update(['status' => MESSAGE_STATUS_COMPLETE]);
-                    }
                     FormatOutput::green('发送成功 发送时间: ' . date('Y-m-d H:i:s') . "\n");
 
                 } catch (\Exception $exception) {
@@ -80,7 +79,12 @@ class Consumed extends Command
                     FormatOutput::red("FILE:{$exception->getFile()}");
                     FormatOutput::red("Line:{$exception->getLine()}");
                 }
-                FormatOutput::yellow('===========================================================================' . "\n");
+                FormatOutput::yellow("\n-------------------------------------------------------------------------------------------------------------------\n");
+                if ($data->isLastUser()) {
+                    $sql = Db::table('message')->where('g_msgid', $data->groupMsgid())->update(['status' => MESSAGE_STATUS_COMPLETE]);
+                    FormatOutput::yellow($sql);
+                    FormatOutput::yellow("\n========================消息组({$data->groupMsgid()}) 结束发送===================================================\n");
+                }
             }
         } catch (\RedisException $e) {
             FormatOutput::red("Error:{$exception->getMessage()}");

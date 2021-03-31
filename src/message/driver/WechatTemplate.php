@@ -168,12 +168,27 @@ class WechatTemplate extends MessageAbstract
         $updateData = [];
         $updateData['send_time'] = date('Y-m-d H:i:s');
         try {
-            $re = $this->app->template_message->send($param);
-            if (0 === $re['errcode']) {
-                $updateData['status'] = MESSAGE_STATUS_SUCCESS;
-            } else {
+            if(strlen($param['touser']) === 28){
+                $re = $this->app->template_message->send($param);
+                if (0 === $re['errcode']) {
+                    $updateData['status'] = MESSAGE_STATUS_SUCCESS;
+                } else {
+                    $updateData['status'] = MESSAGE_STATUS_FAIL;
+                    switch ($re['errcode']) {
+                        case '40003':
+                            $updateData['err_message'] = '用户未绑定公众号！';
+                            break;
+                        case '43004':
+                            $updateData['err_message'] = '用户未关注公众号！';
+                            break;
+                        default:
+                            $updateData['err_message'] = "Error:{$re['errcode']} - {$re['errmsg']}";
+                            break;
+                    }
+                }
+            }else{
                 $updateData['status'] = MESSAGE_STATUS_FAIL;
-                $updateData['err_message'] = "Error:{$re['errcode']} - {$re['errmsg']}";
+                $updateData['err_message'] = '用户未绑定公众号！';
             }
         } catch (InvalidArgumentException $exception) {
             $updateData['status'] = MESSAGE_STATUS_FAIL;
@@ -212,14 +227,29 @@ class WechatTemplate extends MessageAbstract
                 $tempData = $this->data;
                 foreach ($model->sub as $sub) {
                     $tempData['touser'] = $sub['touser'];
-                    $re = $this->app->template_message->send($tempData);
                     $updateData = [];
                     $updateData['send_time'] = date('Y-m-d H:i:s');
-                    if (0 === $re['errcode']) {
-                        $updateData['status'] = MESSAGE_STATUS_SUCCESS;
-                    } else {
+                    if(strlen($tempData['touser']) === 28){
+                        $re = $this->app->template_message->send($tempData);
+                        if (0 === $re['errcode']) {
+                            $updateData['status'] = MESSAGE_STATUS_SUCCESS;
+                        } else {
+                            $updateData['status'] = MESSAGE_STATUS_FAIL;
+                            switch ($re['errcode']) {
+                                case '40003':
+                                    $updateData['err_message'] = '用户未绑定公众号！';
+                                    break;
+                                case '43004':
+                                    $updateData['err_message'] = '用户未关注公众号！';
+                                    break;
+                                default:
+                                    $updateData['err_message'] = "Error:{$re['errcode']} - {$re['errmsg']}";
+                                    break;
+                            }
+                        }
+                    }else{
                         $updateData['status'] = MESSAGE_STATUS_FAIL;
-                        $updateData['err_message'] = "Error:{$re['errcode']} - {$re['errmsg']}";
+                        $updateData['err_message'] = '用户未绑定公众号！';
                     }
                     $model->detailUpdate($sub['msgid'], $updateData);
                 }
@@ -286,7 +316,7 @@ class WechatTemplate extends MessageAbstract
         if (!$is_exists || $reload) {
             $templates = [];
             $sourceTemplatesData = $this->app->template_message->getPrivateTemplates();
-            if(!empty($sourceTemplatesData['errcode'])){
+            if (!empty($sourceTemplatesData['errcode'])) {
                 throw new MessageException($sourceTemplatesData['errmsg'], $sourceTemplatesData['errcode']);
             }
             foreach ($sourceTemplatesData['template_list'] as $row) {
