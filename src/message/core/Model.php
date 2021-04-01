@@ -100,6 +100,38 @@ class Model extends \think\Model
         return Db::table($this->table . '_details')->where('message_id', $message_id);
     }
 
+    public function subMsgTogether(array $param = []){
+
+        $statusCountRows = Db::table('view_message')
+            ->field(['status', 'count(`status`)' => 'status_num', 'ISNULL(read_time)' => 'is_no_read'])
+            ->where($param)
+            ->group('status,ISNULL(read_time)')
+            ->select();
+        $together = [];
+        $together = [
+            'status' => [
+                MESSAGE_STATUS_WAIT => 0,
+                MESSAGE_STATUS_SENTING => 0,
+                MESSAGE_STATUS_FAIL => 0,
+                MESSAGE_STATUS_SUCCESS => 0,
+                MESSAGE_STATUS_COMPLETE => 0,
+                MESSAGE_STATUS_RESET => 0,
+            ],
+            'is_read' => 0,
+            'is_no_read' => 0
+        ];
+        foreach ($statusCountRows as $statusRow) {
+            $together['status'][$statusRow['status']] += $statusRow['status_num'];
+            if (0 == $statusRow['is_no_read']) {
+                $together['is_read'] += $statusRow['status_num'];
+            } else {
+                $together['is_no_read'] += $statusRow['status_num'];
+            }
+
+        }
+        return $together;
+    }
+
     /**
      * 获取用户消息列表
      * @param array $param
@@ -110,49 +142,61 @@ class Model extends \think\Model
      * @throws \think\db\exception\DataNotFoundException
      * @throws \think\db\exception\ModelNotFoundException
      */
-    public function userMsgList($param = [], $page = 1, $rows = 30)
+    public function userMsgList(array $param = [], $page = 1, $rows = 30)
     {
-        $db = Db::table('view_message')
-            ->field(['msgid', 'sign_id', 'touser', 'touser_name', 'status', 'err_message', 'push_time', 'send_time', 'read_time', 'create_time', 'appid', 'fromuser', 'platfrom_id', 'template_id', 'subject', 'content', 'g_msgid'])
-            ->where('sign_id', $this->sign_id)
-            ->order('create_time', 'DESC')
-            ->where($param);
+        if(array_key_exists('touser', $param)){
+            $param['sign_id'] = $this->sign_id;
+        }else{
+            $param[] = ['sign_id', '=', $this->sign_id];
+        }
+        //---------------------- 统计开始 ------------------------------
+        $statusCountRows = Db::table('view_message')
+            ->field(['status', 'count(`status`)' => 'status_num', 'ISNULL(read_time)' => 'is_no_read'])
+            ->where($param)
+            ->group('status,ISNULL(read_time)')
+            ->select();
+        $together = [];
+        $together = [
+            'status' => [
+                MESSAGE_STATUS_WAIT => 0,
+                MESSAGE_STATUS_SENTING => 0,
+                MESSAGE_STATUS_FAIL => 0,
+                MESSAGE_STATUS_SUCCESS => 0,
+                MESSAGE_STATUS_COMPLETE => 0,
+                MESSAGE_STATUS_RESET => 0,
+            ],
+            'is_read' => 0,
+            'is_no_read' => 0
+        ];
+        foreach ($statusCountRows as $statusRow) {
+            $together['status'][$statusRow['status']] += $statusRow['status_num'];
+            if (0 == $statusRow['is_no_read']) {
+                $together['is_read'] += $statusRow['status_num'];
+            } else {
+               $together['is_no_read'] += $statusRow['status_num'];
+            }
+
+        }
+        //---------------------- 统计结束 ------------------------------
         $pageParam = [
             'page' => (int)$page,
             'list_rows' => (int)$rows
         ];
-        $response = $db->paginate($pageParam);
+        $response = Db::table('view_message')
+            ->field(['msgid', 'sign_id', 'touser', 'touser_name', 'status', 'err_message', 'push_time', 'send_time', 'read_time', 'create_time', 'appid', 'fromuser', 'platfrom_id', 'template_id', 'subject', 'content', 'g_msgid'])
+            ->where($param)
+            ->paginate($pageParam);
         if (is_null($response)) {
             $response = [];
         } elseif (is_object($response)) {
             $response = $response->toArray();
             //状态统计
-            $statusCountRows = $db->field(['status', 'count(`status`)' => 'status_num', 'ISNULL(read_time)' => 'is_no_read'])->group('status,ISNULL(read_time)')->select();
-            $response['together'] = [
-                'status' => [
-                    MESSAGE_STATUS_WAIT => 0,
-                    MESSAGE_STATUS_SENTING => 0,
-                    MESSAGE_STATUS_FAIL => 0,
-                    MESSAGE_STATUS_SUCCESS => 0,
-                    MESSAGE_STATUS_COMPLETE => 0,
-                    MESSAGE_STATUS_RESET => 0,
-                ],
-                'is_read' => 0,
-                'is_no_read' => 0
-            ];
-            foreach ($statusCountRows as $statusRow) {
-                $response['together']['status'][$statusRow['status']] += $statusRow['status_num'];
-                if (0 == $statusRow['is_no_read']) {
-                    $response['together']['is_read'] += $statusRow['status_num'];
-                } else {
-                    $response['together']['is_no_read'] += $statusRow['status_num'];
-                }
 
-            }
             foreach ($response['data'] as &$vo) {
                 $vo['content'] = unserialize($vo['content']);
             }
         }
+        $response['together'] = $together;
         return $response;
     }
 

@@ -6,6 +6,7 @@ namespace uukule\message\driver;
 
 use EasyWeChat\Kernel\Exceptions\InvalidArgumentException;
 use think\facade\Cache;
+use think\facade\Log;
 use uukule\message\core\Data;
 use uukule\message\core\Model;
 use uukule\MessageException;
@@ -170,8 +171,10 @@ class WechatTemplate extends MessageAbstract
         try {
             if(strlen($param['touser']) === 28){
                 $re = $this->app->template_message->send($param);
+                Log::write(json_encode($re, 256), 'message');
                 if (0 === $re['errcode']) {
                     $updateData['status'] = MESSAGE_STATUS_SUCCESS;
+                    $updateData['out_msgid'] = $re['msgid'];
                 } else {
                     $updateData['status'] = MESSAGE_STATUS_FAIL;
                     switch ($re['errcode']) {
@@ -233,6 +236,7 @@ class WechatTemplate extends MessageAbstract
                         $re = $this->app->template_message->send($tempData);
                         if (0 === $re['errcode']) {
                             $updateData['status'] = MESSAGE_STATUS_SUCCESS;
+                            $updateData['out_msgid'] = $re['msgid'];
                         } else {
                             $updateData['status'] = MESSAGE_STATUS_FAIL;
                             switch ($re['errcode']) {

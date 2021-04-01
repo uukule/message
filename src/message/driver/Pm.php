@@ -206,6 +206,18 @@ class Pm extends MessageAbstract
         return $response;
     }
 
+    public function subMsgTogether(array $param = []){
+
+        $where = [
+            'platfrom_id' => $this->config['platfrom_id']
+        ];
+        $where = array_merge($where, $param);
+
+        $model = new Model();
+        $response = $model->subMsgTogether($where);
+        return $response;
+    }
+
     public function setRead(string $msgid) : bool
     {
         $model = new Model();
