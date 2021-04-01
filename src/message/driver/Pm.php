@@ -6,6 +6,7 @@ namespace uukule\message\driver;
 
 use EasyWeChat\Kernel\Exceptions\InvalidArgumentException;
 use think\facade\Cache;
+use think\facade\Db;
 use uukule\message\core\Data;
 use uukule\message\core\Model;
 use uukule\message\core\Queue;
@@ -113,7 +114,7 @@ class Pm extends MessageAbstract
             $pack->isFirstUser(true);
             $pack->isLastUser(true);
             $pack->touser('');
-            $pack->data([]);
+            $pack->data(['sign_id' => $this->config['sign_id']]);
             $pack->msgid($model->g_msgid);
             $queue->timeout($this->push_time);
             $queue->push($pack);
@@ -128,10 +129,14 @@ class Pm extends MessageAbstract
      */
     public function queueSend(string $msgid, array $query): bool
     {
-        $model = new Model();
+        $model = new Model([], $query);
         $gmsgRow = $model->where('g_msgid', $msgid)->find();
-        $gmsgRow->save(['status' => MESSAGE_STATUS_COMPLETE]);
-        $gmsgRow->groupMsg()->save(['status' => MESSAGE_STATUS_SUCCESS]);
+        if(is_null($gmsgRow)){
+            echo '消息不存在！';
+        }else{
+            $gmsgRow->save(['status' => MESSAGE_STATUS_COMPLETE]);
+            $gmsgRow->groupMsg()->save(['status' => MESSAGE_STATUS_SUCCESS]);
+        }
         return true;
     }
 

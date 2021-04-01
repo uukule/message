@@ -16,7 +16,7 @@ class Model extends \think\Model
 
     protected $globalScope = ['sign'];
 
-    protected $sign_id = 0;
+    protected $sign_id = null;
 
     protected $type = [
         'content' => 'serialize'
@@ -28,9 +28,9 @@ class Model extends \think\Model
     protected static $drivers = null;
 
 
-    public function __construct(array $data = [])
+    public function __construct(array $data = [], array $config = [])
     {
-        $config = config('message.database');
+        $config = array_merge(config('message.database'), $config);
         $this->table = $config['table'];
         $this->sign_id = $config['sign_id'];
         parent::__construct($data);
@@ -185,6 +185,7 @@ class Model extends \think\Model
         $response = Db::table('view_message')
             ->field(['msgid', 'sign_id', 'touser', 'touser_name', 'status', 'err_message', 'push_time', 'send_time', 'read_time', 'create_time', 'appid', 'fromuser', 'platfrom_id', 'template_id', 'subject', 'content', 'g_msgid'])
             ->where($param)
+            ->order('push_time', 'desc')
             ->paginate($pageParam);
         if (is_null($response)) {
             $response = [];
