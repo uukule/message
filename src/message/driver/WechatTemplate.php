@@ -103,6 +103,7 @@ class WechatTemplate extends MessageAbstract
     public function cache_rebind(\Psr\SimpleCache\CacheInterface $cache){
         $this->app->rebind('cache', $cache);
         $this->config['cache_rebind'] = $cache;
+        return $this;
     }
 
     /**
