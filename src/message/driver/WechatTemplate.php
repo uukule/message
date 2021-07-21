@@ -60,6 +60,7 @@ class WechatTemplate extends MessageAbstract
     public function __construct(array $config = [])
     {
         $config = array_merge($this->config, $config);
+        $config['type'] = 'wechat_template';
         $this->config = $config;
         try {
             $this->app = Factory::officialAccount($config);
@@ -97,6 +98,11 @@ class WechatTemplate extends MessageAbstract
         $this->app['access_token']->setToken($access_token);
         $this->is_set_access_token = true;
         return $this;
+    }
+
+    public function cache_rebind(\Psr\SimpleCache\CacheInterface $cache){
+        $this->app->rebind('cache', $cache);
+        $this->config['cache_rebind'] = $cache;
     }
 
     /**
@@ -170,6 +176,7 @@ class WechatTemplate extends MessageAbstract
         $updateData['send_time'] = date('Y-m-d H:i:s');
         try {
             if(strlen($param['touser']) === 28){
+                $this->app->rebind('cache', $this->config['cache_rebind']);
                 $re = $this->app->template_message->send($param);
                 Log::write(json_encode($re, 256), 'message');
                 if (0 === $re['errcode']) {
@@ -277,13 +284,7 @@ class WechatTemplate extends MessageAbstract
                 $packData['touser'] = $sub['touser'];
                 $pack = new Data();
                 $pack->driver(self::class);
-                $pack->config([
-                    'type' => 'wechat_template',
-                    'app_id' => $this->config['app_id'],
-                    'secret' => $this->config['secret'],
-                    'token' => $this->config['token'],//如：oss-cn-hangzhou.aliyuncs.com
-                    'encoding_aes_key' => $this->config['encoding_aes_key'],//
-                ]);
+                $pack->config($this->config);
                 $pack->time(time());
                 $pack->groupMsgid($model->g_msgid);
                 $pack->isFirstUser($isFirstUser);
