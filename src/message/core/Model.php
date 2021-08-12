@@ -208,7 +208,7 @@ class Model extends \think\Model
             $config = config('message');
             $drivers = [];
             foreach ($config as $driver) {
-                if (!array_key_exists('platfrom_id', $driver)) {
+                if (!is_array($driver) || !array_key_exists('platfrom_id', $driver)) {
                     continue;
                 }
                 $drivers[(string)$driver['platfrom_id']] = $driver;
