@@ -5,6 +5,7 @@ namespace uukule\message\command;
 
 use think\console\Command;
 use think\console\Input;
+use think\console\input\Argument;
 use think\console\Output;
 use think\facade\Db;
 use uukule\facade\Message;
@@ -28,6 +29,12 @@ class Consumed extends Command
     protected function configure()
     {
         $this->setName('message:queue')->setDescription('执行消息队列');
+        $this->addArgument("type", Argument::REQUIRED, "队列类型");
+        $this->setHelp("
+        类型                        名称
+        aliyun_sms                  阿里云短信队列
+        wechat_template             公众号模板消息队列
+        ");
     }
 
     /**
@@ -40,11 +47,12 @@ class Consumed extends Command
      */
     protected function execute(Input $input, Output $output)
     {
+        $type = $input->getArgument('type');
         $queue = new Queue();
         $model = new Model();
         try {
             while (true) {
-                $data = $queue->pop();
+                $data = $queue->pop($type);
                 if (empty($data)) {
                     sleep(1);
                     FormatOutput::green('.');

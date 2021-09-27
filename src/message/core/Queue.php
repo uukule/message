@@ -7,7 +7,9 @@ use Redis;
 
 class Queue
 {
-    protected $queue_name = 'message:queue';
+    const MESSAGE_QUEUE_KEY = 'message:queue:%s';
+    const MESSAGE_QUEUE_GROUP_LIST = 'message:group:%s';
+
     /**
      * @var Redis|null
      */
@@ -39,9 +41,11 @@ class Queue
     public function push(Data $data): void
     {
         if(is_null($this->timeout)){
-            self::$handle->lPush($this->queue_name, serialize($data));
+            $listName = sprintf(self::MESSAGE_QUEUE_KEY, $data->config['type']);
+            self::$handle->lPush($listName, serialize($data));
         }else{
-            self::$handle->lPush("{$this->queue_name}:{$data->groupMsgid()}", serialize($data));
+            $timeoutListName = sprintf(self::MESSAGE_QUEUE_GROUP_LIST, $data->groupMsgid());
+            self::$handle->lPush($timeoutListName, serialize($data));
             self::$handle->zAdd('message:timer', $this->timeout, $data->groupMsgid());
         }
 
@@ -63,8 +67,12 @@ class Queue
         while (true) {
             if ($msgids = self::$handle->zRangeByScore('message:timer', 0, time())) {
                 foreach ($msgids as $msgid) {
-                    while ($val = self::$handle->lPop("{$this->queue_name}:{$msgid}")) {
-                        self::$handle->lPush($this->queue_name, $val);
+                    $groupList = sprintf(self::MESSAGE_QUEUE_GROUP_LIST, $msgid);
+                    while ($val = self::$handle->lPop($groupList)) {
+                        $class = unserialize($val);
+                        $listName = sprintf(self::MESSAGE_QUEUE_KEY, $class->config['type']);
+                        self::$handle->lPush($listName, $val);
+                        unset($listName);
                     }
 
                     FormatOutput::red("\n".date('Y-m-d H:i:s')." - {$msgid}\n");
@@ -87,7 +95,8 @@ class Queue
      */
     public function revoke(string $msgid):bool
     {
-        self::$handle->del("{$this->queue_name}:{$msgid}");
+        $groupList = sprintf(self::MESSAGE_QUEUE_GROUP_LIST, $msgid);
+        self::$handle->del($groupList);
         self::$handle->zRem('message:timer', $msgid);
         return true;
     }
@@ -95,9 +104,10 @@ class Queue
     /**
      * @return null|Data
      */
-    public function pop()
+    public function pop(string $type)
     {
-        $data = self::$handle->rPop($this->queue_name);
+        $queueKey = sprintf(self::MESSAGE_QUEUE_KEY, $type);
+        $data = self::$handle->rPop($queueKey);
         $data = unserialize($data);
         return $data;
     }
